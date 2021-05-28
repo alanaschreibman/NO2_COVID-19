@@ -137,6 +137,7 @@ top10countries("Africa")
 top10countries("Oceania")
 top10countries("South America")
 ```
+
 ### GDP and COVID-19 Cases per Million
 Scatter plots with a smooth line showing the relationship of GDP per capita and COVID-19 cases per million people are the outputs of the function below: 
 ```{r, eval = TRUE}
@@ -157,26 +158,27 @@ cases.gdp("Oceania")
 cases.gdp("South America")
 ```
 
-###
-find mean of median age, and set half above mean and half below mean as factors
-make bar plot and fill with the above/below mean (but dodge) and put covid counts on y axis
+### Median and and COVID-19 Cases per Million
+Cut median age in two halves and convert to factors with labels "below.med" and "above.med". Bar plot shows COVID-19 cases per million for each country separated by continent, with fill color indicating whether the median population age is above or below the global median. 
 ```{r, eval = TRUE}
 summarise(owid.countries, med.age = mean(med.age, na.rm = TRUE)) #Mean of the median age of all countries.
+countries.med.age <- owid.countries %>%
+                    mutate(med.age = cut(med.age, breaks = c(0, 30.38, 48.3), labels = c("below.med", "above.med")))
+countries.med.age$med.age <- as.factor(countries.med.age$med.age)
 cases.med.age <- function(x) { 
-                    owid.countries %>% 
+                    countries.med.age %>% 
                     filter(continent == x) %>%
-                    mutate(med.age = cut(med.age, breaks = c(0, 30.38, 48.3), labels = c("below.med", "above.med"))) %>%
-                    mutate(med.age = factor(med.age, levels = c(1, 2), labels = c("below.med", "above.med"))) %>%
                     ggplot(aes(x = location, y = totcases.mil, fill = factor(med.age))) +
                         geom_bar(stat = "identity", position = "dodge") +
                         theme_bw() +
-                        labs(x = "Country", y = "Total COVID-19 Cases per Million People") 
+                        labs(x = "Country", y = "Total COVID-19 Cases per Million People") +
+                        scale_fill_brewer(palette = "Set1") +
+                        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 } 
+cases.med.age("North America")
+cases.med.age("Europe")
+cases.med.age("Asia")
 cases.med.age("Africa")
-owid.countries %>%
-        mutate(med.age = cut(med.age, breaks = c(0, 30.38, 48.3), labels = c("below.med", "above.med")))
-        ggplot(aes(x = ))
-owid.med.age
-max(owid.countries$med.age, na.rm = TRUE)
-cases.med.age
+cases.med.age("Oceania")
+cases.med.age("South America")
 ```
