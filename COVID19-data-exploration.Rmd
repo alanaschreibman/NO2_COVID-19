@@ -5,24 +5,20 @@ date: "5/27/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-
 ***
 The purpose of this file is to practice applying basic R commands learned through lecture videos and perform exploratory analysis on worldwide COVID-19 data. 
 ***
 
 
 ###Our World in Data GitHub COVID-19 outcomes
-Data was downloaded and summarized as shown below:
-```{r, eval = FALSE}
-owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), header = TRUE)
-owid
+Data was read in and summarized as shown below:
+```{r, eval = TRUE}
+owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), header = TRUE) 
 dim(owid)
+```
+
+```{r, eval = TRUE}
 head(owid)
-owid.lines
 str(owid)
 summary(owid)
 ```
@@ -36,6 +32,13 @@ owid.filtered <- owid %>%
                   select(c(iso.code:totcases, totdeaths, totcases.mil, totdeaths.mil, hosp.patients, hosp.patients.mil, med.age, older70, gdp.cap, card.death, diab.prev, fem.smokers, male.smokers))
 dim(owid.filtered)
 head(owid.filtered)
+head(owid.filtered)
+tail(owid.filtered)
+```
+
+```{r, eval = TRUE}
+
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
