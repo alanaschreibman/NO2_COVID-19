@@ -13,6 +13,10 @@ output:
     highlight: pygments
 ---
 
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
 ***
 
 The purpose of this file is to practice applying basic R commands learned through lecture videos and perform exploratory analysis on worldwide COVID-19 data. 
@@ -20,12 +24,12 @@ The purpose of this file is to practice applying basic R commands learned throug
 
 ### Our World in Data GitHub COVID-19 outcomes
 Data was read in and summarized as shown below: (current file is as of 5/26)
-```{r, eval = FALSE}
-owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), na.strings = c("", "NA"), header = TRUE) 
+```{r, eval = TRUE}
+owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), na.strings = c("", "NA"), colClasses = c("date" = "Date"), header = TRUE) 
 dim(owid)
 ```
 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 head(owid)
 str(owid)
 summary(owid)
@@ -33,11 +37,14 @@ summary(owid)
 
 ### Full Cleaned Data Set
 Data set, including possible confounders for use in later analysis, is cleaned and filtered below. 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 library(dplyr)
+library(lubridate)
+library(knitr)
 owid.filtered <- owid %>%
                   rename(iso.code = iso_code, totcases = total_cases, totdeaths = total_deaths, totcases.mil = total_cases_per_million, totdeaths.mil = total_deaths_per_million, hosp.patients = hosp_patients, hosp.patients.mil = hosp_patients_per_million, med.age = median_age, older70 = aged_70_older, gdp.cap = gdp_per_capita, card.death = cardiovasc_death_rate, diab.prev = diabetes_prevalence, fem.smokers = female_smokers, male.smokers = male_smokers) %>%
-                  select(c(iso.code:totcases, totdeaths, totcases.mil, totdeaths.mil, hosp.patients, hosp.patients.mil, med.age, older70, gdp.cap, card.death, diab.prev, fem.smokers, male.smokers))
+                  select(c(iso.code:totcases, totdeaths, totcases.mil, totdeaths.mil, hosp.patients, hosp.patients.mil, med.age, older70, gdp.cap, card.death, diab.prev, fem.smokers, male.smokers)) %>%
+                  filter(date == "2020-05-27") #Filtered out all but most recent date (most recent date is a running sum of total cases).
 dim(owid.filtered)
 head(owid.filtered)
 tail(owid.filtered)
@@ -46,7 +53,7 @@ table(owid.filtered$continent, useNA = "ifany") #Data includes both continent an
 
 #### Continent Analysis
 Data is filtered to remove entries for specific country locations and include only data that aggregates COVID-19 outcomes on a continent and world scale. 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 owid.continents <- owid.filtered %>%
                     filter(is.na(continent)) %>%
                     select(-continent)
@@ -56,7 +63,7 @@ table(owid.continents$location)
 
 #### Country Analysis
 Data is filtered to include only country-specific COVID-19 outcomes and exclude continent and world-wide data.  
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 owid.countries <- owid.filtered %>%
                     filter(!is.na(continent))
 print(owid.countries)
@@ -66,33 +73,110 @@ table(owid.countries$continent)
 #### Tests for Missingness
 ```{r, eval = TRUE}
 t <- table(owid.filtered$totcases)
+t
 tail(t)
 t.na <- table(owid.filtered$totcases, useNA = "ifany")
 tail(t.na) #Keep this missing data in mind when analyzing case counts.  
+table(owid.filtered$totdeaths)
+t2 <- table(owid.filtered$totdeaths, useNA = "ifany")
+tail(t2)
 ```
 
 #### Modified Data Frames
-```{r, eval = FALSE}
+Filtered owid data frames further narrowed to COVID-19 cases only, deaths only, and hospitalizations only, separated by continent and by country respectively. 
+```{r, eval = TRUE}
 #By continent:
-owid.cases.cty <- select(owid.continents, c(iso.code:totcases, totcases.mil))
-owid.deaths.cty <- select(owid.continents, c(iso.code:date, totdeaths, totdeaths.mil))
-owid.hosp.cty <- select(owid.continents, c(iso.code:date, hosp.patients, hosp.patients.mil))
+owid.cases.cont <- select(owid.continents, c(iso.code:totcases, totcases.mil))
+owid.deaths.cont <- select(owid.continents, c(iso.code:date, totdeaths, totdeaths.mil))
+owid.hosp.cont <- select(owid.continents, c(iso.code:date, hosp.patients, hosp.patients.mil))
+owid.cases.cont
 
 #By country:
-owid.cases.cont <- select(owid.countries, c(iso.code:totcases, totcases.mil))
-owid.deaths.cont <- select(owid.countries, c(iso.code:date, totdeaths, totdeaths.mil))
-owid.hosp.cont <- select(owid.countries, c(iso.code:date, hosp.patients, hosp.patients.mil))
+owid.cases.cnty <- select(owid.countries, c(iso.code:totcases, totcases.mil))
+owid.deaths.cnty <- select(owid.countries, c(iso.code:date, totdeaths, totdeaths.mil))
+owid.hosp.cnty <- select(owid.countries, c(iso.code:date, hosp.patients, hosp.patients.mil))
 ```
 
 ### Continent COVID-19 Plots
+Plots for exploratory analysis comparing COVID-19 cases by continent for both total cases and total cases per million people.
 ```{r, eval = TRUE}
-
+library(ggplot2)
+library(cowplot)
+ggplot(data = owid.continents, aes(x = location, y = totcases)) +
+  geom_bar(stat="identity") +
+  labs(title = "Total COVID-19 Cases by Continent") +
+  labs(x = "Continent", y = "Total COVID-19 Cases") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total cases by continent. 
+ggplot(data = owid.continents, aes(x = location, y = totcases.mil)) +
+  geom_bar(stat="identity") + 
+  labs(title = "Total COVID-19 Cases per Million People by Continent") +
+  labs(x = "Continent", y = "Total COVID-19 Cases per Million") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total cases per million by continent. 
 ```
 
+### Top 10 Country COVID-19 Plots
+Barplots filtering out the 10 countries with the highest COVID-19 cases per million people on each continent are the outputs of the function below: 
+```{r, eval = TRUE}
+owid.countries %>%
+    group_by(continent) %>%
+    summarise(totcases = mean(totcases.mil, na.rm = TRUE)) #Mean COVID-19 cases by continent.
+top10countries <- function(x) { 
+                    owid.countries %>% 
+                    filter(continent == x) %>%
+                    arrange(desc(totcases.mil)) %>%
+                    head(n=10) %>%
+                    ggplot(aes(x = location, y = totcases.mil)) +
+                        geom_bar(stat = "identity") +
+                        labs(x = "Country", y = "Total COVID-19 Cases per Million People") +
+                        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+} 
+top10countries("North America")
+top10countries("Europe")
+top10countries("Asia")
+top10countries("Africa")
+top10countries("Oceania")
+top10countries("South America")
+```
+### GDP and COVID-19 Cases per Million
+Scatter plots with a smooth line showing the relationship of GDP per capita and COVID-19 cases per million people are the outputs of the function below: 
+```{r, eval = TRUE}
+cases.gdp <- function(x) { 
+                    owid.countries %>% 
+                    filter(continent == x) %>%
+                    ggplot(aes(x = gdp.cap, y = totcases.mil)) +
+                        geom_point(color = "#fee6ce") +
+                        geom_smooth(color = "red") +
+                        theme_bw() +
+                        labs(x = "GDP per Capita", y = "Total COVID-19 Cases per Million People") 
+} 
+cases.gdp("North America")
+cases.gdp("Europe")
+cases.gdp("Asia")
+cases.gdp("Africa")
+cases.gdp("Oceania")
+cases.gdp("South America")
+```
 
-countries:
-group_by
-owid.afghanistan <- owid.filtered %>%
-                      select(c(location, date, totcases))
-                      filter(location <- "Afghanistan")
-print(owid.afghanistan)
+###
+find mean of median age, and set half above mean and half below mean as factors
+make bar plot and fill with the above/below mean (but dodge) and put covid counts on y axis
+```{r, eval = TRUE}
+summarise(owid.countries, med.age = mean(med.age, na.rm = TRUE)) #Mean of the median age of all countries.
+cases.med.age <- function(x) { 
+                    owid.countries %>% 
+                    filter(continent == x) %>%
+                    mutate(med.age = cut(med.age, breaks = c(0, 30.38, 48.3), labels = c("below.med", "above.med"))) %>%
+                    mutate(med.age = factor(med.age, levels = c(1, 2), labels = c("below.med", "above.med"))) %>%
+                    ggplot(aes(x = location, y = totcases.mil, fill = factor(med.age))) +
+                        geom_bar(stat = "identity", position = "dodge") +
+                        theme_bw() +
+                        labs(x = "Country", y = "Total COVID-19 Cases per Million People") 
+} 
+cases.med.age("Africa")
+owid.countries %>%
+        mutate(med.age = cut(med.age, breaks = c(0, 30.38, 48.3), labels = c("below.med", "above.med")))
+        ggplot(aes(x = ))
+owid.med.age
+max(owid.countries$med.age, na.rm = TRUE)
+cases.med.age
+```
