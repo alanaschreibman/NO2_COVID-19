@@ -1,44 +1,98 @@
 ---
-title: "COVIDmortality.Rmd"
+title: "COVID-19 Outcomes"
 author: "Alana Schreibman"
 date: "5/27/2021"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: 
+        collapsed: true
+        smooth_scroll: true
+    depth: 3 
+    theme: cosmo
+    highlight: pygments
 ---
 
 ***
+
 The purpose of this file is to practice applying basic R commands learned through lecture videos and perform exploratory analysis on worldwide COVID-19 data. 
-***
 
 
-###Our World in Data GitHub COVID-19 outcomes
-Data was read in and summarized as shown below:
-```{r, eval = TRUE}
-owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), header = TRUE) 
+### Our World in Data GitHub COVID-19 outcomes
+Data was read in and summarized as shown below: (current file is as of 5/26)
+```{r, eval = FALSE}
+owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), na.strings = c("", "NA"), header = TRUE) 
 dim(owid)
 ```
 
-```{r, eval = TRUE}
+```{r, eval = FALSE}
 head(owid)
 str(owid)
 summary(owid)
 ```
 
-###Full Cleaned Data Set
+### Full Cleaned Data Set
 Data set, including possible confounders for use in later analysis, is cleaned and filtered below. 
-```{r, eval = TRUE}
+```{r, eval = FALSE}
 library(dplyr)
 owid.filtered <- owid %>%
                   rename(iso.code = iso_code, totcases = total_cases, totdeaths = total_deaths, totcases.mil = total_cases_per_million, totdeaths.mil = total_deaths_per_million, hosp.patients = hosp_patients, hosp.patients.mil = hosp_patients_per_million, med.age = median_age, older70 = aged_70_older, gdp.cap = gdp_per_capita, card.death = cardiovasc_death_rate, diab.prev = diabetes_prevalence, fem.smokers = female_smokers, male.smokers = male_smokers) %>%
                   select(c(iso.code:totcases, totdeaths, totcases.mil, totdeaths.mil, hosp.patients, hosp.patients.mil, med.age, older70, gdp.cap, card.death, diab.prev, fem.smokers, male.smokers))
 dim(owid.filtered)
 head(owid.filtered)
-head(owid.filtered)
 tail(owid.filtered)
+table(owid.filtered$continent, useNA = "ifany") #Data includes both continent and country-specific outcomes. Continent outcomes can be distinguished by "NA" in the continent column; the continent name is in the location column. 
 ```
 
+#### Continent Analysis
+Data is filtered to remove entries for specific country locations and include only data that aggregates COVID-19 outcomes on a continent and world scale. 
+```{r, eval = FALSE}
+owid.continents <- owid.filtered %>%
+                    filter(is.na(continent)) %>%
+                    select(-continent)
+print(owid.continents)
+table(owid.continents$location)
+```
+
+#### Country Analysis
+Data is filtered to include only country-specific COVID-19 outcomes and exclude continent and world-wide data.  
+```{r, eval = FALSE}
+owid.countries <- owid.filtered %>%
+                    filter(!is.na(continent))
+print(owid.countries)
+table(owid.countries$continent)
+```
+
+#### Tests for Missingness
+```{r, eval = TRUE}
+t <- table(owid.filtered$totcases)
+tail(t)
+t.na <- table(owid.filtered$totcases, useNA = "ifany")
+tail(t.na) #Keep this missing data in mind when analyzing case counts.  
+```
+
+#### Modified Data Frames
+```{r, eval = FALSE}
+#By continent:
+owid.cases.cty <- select(owid.continents, c(iso.code:totcases, totcases.mil))
+owid.deaths.cty <- select(owid.continents, c(iso.code:date, totdeaths, totdeaths.mil))
+owid.hosp.cty <- select(owid.continents, c(iso.code:date, hosp.patients, hosp.patients.mil))
+
+#By country:
+owid.cases.cont <- select(owid.countries, c(iso.code:totcases, totcases.mil))
+owid.deaths.cont <- select(owid.countries, c(iso.code:date, totdeaths, totdeaths.mil))
+owid.hosp.cont <- select(owid.countries, c(iso.code:date, hosp.patients, hosp.patients.mil))
+```
+
+### Continent COVID-19 Plots
 ```{r, eval = TRUE}
 
-
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+countries:
+group_by
+owid.afghanistan <- owid.filtered %>%
+                      select(c(location, date, totcases))
+                      filter(location <- "Afghanistan")
+print(owid.afghanistan)
