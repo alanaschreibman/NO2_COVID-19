@@ -135,11 +135,23 @@ plot_grid() #Use this to combine the graphs from the for loop. Need to figure ou
 ### GDP and COVID-19 Cases per Million
 Scatter plots with a smooth line showing the relationship of GDP per capita and COVID-19 cases per million people are the outputs of the function below: 
 ```{r, eval = TRUE}
+ggplot(data = owid.countries, aes(x = gdp.cap, y = totcases.mil)) +
+  geom_point(color = "#333aff") +
+  geom_smooth(color = "red") +
+  geom_smooth(method = "lm", color = "green")
+  theme_bw() +
+  labs(x = "GDP per Capita", y = "Total COVID-19 Cases per Million People") +
+  labs(title = paste0("World COVID-19 Cases per Million People in vs. GDP per Capita")) #COVID-19 cases and GDP per capita on world scale. Red line is smooth fit; green line is linear fit. 
+cor(owid.countries$totcases.mil, owid.countries$gdp.cap, use = "complete.obs") 
+gdp.lm.fit <- lm(totcases.mil ~ gdp.cap, data = owid.countries)
+gdp.lm.fit
+summary.lm(gdp.lm.fit) #Summary statistics for linear fit. 
+
 cases.gdp <- function(x) { 
                     owid.countries %>% 
                     filter(continent == x) %>%
                     ggplot(aes(x = gdp.cap, y = totcases.mil)) +
-                        geom_point(color = "#fee6ce") +
+                        geom_point(color = "#333aff") +
                         geom_smooth(color = "red") +
                         theme_bw() +
                         labs(x = "GDP per Capita", y = "Total COVID-19 Cases per Million People") +
@@ -174,10 +186,18 @@ for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South Ameri
 ### Smoking and COVID-19 Cases per Million 
 Graphs below show percentages of female and male smokers by country and the correlation to COVID-19 cases. 
 ```{r, eval = TRUE}
-cases.smoking <- function(x) {
+ggplot(data = owid.countries, aes(x = fem.smokers, y = totcases.mil)) +
+  geom_point(color = "#333aff", alpha = 1) +
+  geom_smooth(color = "red") +
+  theme_bw() +
+  labs(x = "Percentage of Female Smokers by Country", y = "Total COVID-19 Cases per Million People") +
+  labs(title = "World COVID-19 Cases per Million People in  vs. Percentage of Female Smokers") #COVID-19 cases vs. female smokers on world scale. 
+cor(owid.countries$totcases, owid.countries$fem.smokers, use = "complete.obs") 
+
+cases.smoking.f <- function(x) {
                     owid.countries %>%
                     filter(continent == x) %>%
-                    ggplot(aes(x = fem.smokers, y = totcases)) +
+                    ggplot(aes(x = fem.smokers, y = totcases.mil)) +
                       geom_point(color = "#333aff", alpha = 1) +
                       geom_smooth(color = "red") +
                       theme_bw() +
@@ -185,13 +205,13 @@ cases.smoking <- function(x) {
                       labs(title = paste0("COVID-19 Cases per Million People in ", (continent = x), " vs. Percentage of Female Smokers"))
 }
 for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
-  print(cases.smoking(i)) #Apply function to each continent. 
+  print(cases.smoking.f(i)) #Apply function to each continent. 
 }
 
-cases.smoking <- function(x) {
+cases.smoking.m <- function(x) {
                     owid.countries %>%
                     filter(continent == x) %>%
-                    ggplot(aes(x = male.smokers, y = totcases)) +
+                    ggplot(aes(x = male.smokers, y = totcases.mil)) +
                       geom_point(color = "#333aff", alpha = 1) +
                       geom_smooth(color = "red") +
                       theme_bw() +
@@ -199,7 +219,7 @@ cases.smoking <- function(x) {
                       labs(title = paste0("COVID-19 Cases per Million People in ", (continent = x), " vs. Percentage of Male Smokers"))
 }
 for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
-  print(cases.smoking(i)) #Apply function to each continent. 
+  print(cases.smoking.m(i)) #Apply function to each continent. 
 }
 ```
 
