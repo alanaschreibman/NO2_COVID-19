@@ -307,15 +307,53 @@ for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South Ameri
 }
 ```
 
-
+## Geospatial Analysis
+World map file is read in and prepared for overlaying with COVID-19 data.
 ```{r, eval = TRUE}
 library(sf)
-download.file("https://github.com/HimesGroup/k12bioinformatics/tree/master/COVID19_for_K12/shapefile_World_Countries.zip", "world.map")
-unzip("world.map.zip")
-world.map.zip <- "/Users/alanaschreibman/NO2_COVID-19.zip
-getwd()"
-unzip(uzp, exdir = "")
-st_drivers()
+#File downloaded from https://hub.arcgis.com/datasets/esri::world-countries-generalized-1/explore and moved to working directory. 
+world.map.zip <- "/Users/alanaschreibman/NO2_COVID-19.zip"
+if (file.exists("World_Countries_.zip")) file.remove("World_Countries_.zip")
+world.sf <- st_read("country_gen_trim.shp")  # Read shapefile as an sf object
+class(world.sf)
+head(world.sf)
+world.geo <- st_geometry(world.sf)
+plot(world.geo)
+plot(world.geo, col = "lemonchiffon2")
+plot(world.geo, lwd = 0.5, border = "red")
 ```
+### Geospatial Distribution of COVID-19 Cases
+Joins OWID data set with world map data frame and then use country cases to shade countries accordingly.
+```{r, eval = TRUE}
+library(RColorBrewer)
+library(viridis)
+
+my_theme <- function() {
+  theme_minimal() +                                  
+  theme(axis.line = element_blank(),               
+  axis.text = element_blank(),                 
+  axis.title = element_blank(),
+  panel.grid = element_line(color = "white"),  
+  legend.key.size = unit(0.8, "cm"),          
+  legend.text = element_text(size = 10),      
+  legend.title = element_text(size = 10))
+}
+
+myPalette <- colorRampPalette(brewer.pal(9, "BuPu")) 
+
+world.sf[105, "NAME"] <- "Democratic Republic of Congo"
+world.sf <- world.sf %>%
+  rename(location = NAME) %>% 
+  inner_join(owid.countries, world.sf, by = "location") #Joined OWID data set with .sph file for geospatial analysis.  
+ggplot(data = world.sf, aes(fill = totcases.mil),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "World Distribution of COVID-19 Cases") +
+  scale_fill_gradientn(name = "COVID-19 \ncases (per million)",  
+                    limits = c(0, 6000), 
+                    colours = myPalette(100)) #Plot of world distribution of COVID-19 cases with color shading. 
+```
+
 
 
