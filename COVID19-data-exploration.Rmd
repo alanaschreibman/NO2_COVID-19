@@ -13,44 +13,51 @@ output:
     highlight: pygments
 ---
 
-```{r, echo=FALSE}
-knitr::opts_chunk$set(error = TRUE)
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
 ***
 
 The purpose of this file is to practice applying basic R commands learned through lecture videos and perform exploratory analysis on worldwide COVID-19 data. 
 
-
-### Our World in Data GitHub COVID-19 outcomes
-Data was read in and summarized as shown below: (current file is as of 5/31)
 ```{r, eval = TRUE}
 library(dplyr)
 library(lubridate)
 library(knitr)
 library(ggplot2)
 library(cowplot)
-owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), na.strings = c("", "NA"), colClasses = c("date" = "Date"), header = TRUE) 
+```
+
+### Our World in Data GitHub COVID-19 outcomes
+Data was read in and summarized as shown below: (current file is as of 5/31)
+```{r, eval = TRUE}
+owid <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"), na.strings = c("", "NA"), colClasses = c("date" = "Date"), header = TRUE)
 dim(owid)
 ```
 
-```{r, eval = TRUE}
+
+```{r, eval = FALSE}
 head(owid)
 str(owid)
 summary(owid)
 ```
 
-### Full Cleaned Data Set
+#### Full Cleaned Data Set
 Data set, including possible confounders for use in later analysis, is cleaned and filtered below. 
 ```{r, eval = TRUE}
 owid.filtered <- owid %>%
                   rename(iso.code = iso_code, totcases = total_cases, totdeaths = total_deaths, totcases.mil = total_cases_per_million, totdeaths.mil = total_deaths_per_million, hosp.patients = hosp_patients, hosp.patients.mil = hosp_patients_per_million, pop.density = population_density, med.age = median_age, older70 = aged_70_older, gdp.cap = gdp_per_capita, card.death = cardiovasc_death_rate, diab.prev = diabetes_prevalence, fem.smokers = female_smokers, male.smokers = male_smokers) %>%
                   select(c(iso.code:totcases, totdeaths, totcases.mil, totdeaths.mil, hosp.patients, hosp.patients.mil, population, pop.density, med.age, older70, gdp.cap, card.death, diab.prev, fem.smokers, male.smokers)) %>% #Renamed variables and filtered to keep only those of interest. 
                   filter(date == "2020-05-31") #Filtered out all but most recent date (most recent date is a running sum of total cases).
+table(owid.filtered$continent, useNA = "ifany") #Data includes both continent and country-specific outcomes. Continent outcomes can be distinguished by "NA" in the continent column; the continent name is in the location column. 
+```
+
+More exploratory analysis of data frames:
+```{r, eval = FALSE}
 dim(owid.filtered)
 head(owid.filtered)
 tail(owid.filtered)
-table(owid.filtered$continent, useNA = "ifany") #Data includes both continent and country-specific outcomes. Continent outcomes can be distinguished by "NA" in the continent column; the continent name is in the location column. 
 ```
 
 #### Continent Analysis
@@ -59,7 +66,6 @@ Data is filtered to remove entries for specific country locations and include on
 owid.continents <- owid.filtered %>%
                     filter(is.na(continent)) %>%
                     select(-continent) #Used missingness properties to select only continent rows and then removed continent column. 
-print(owid.continents)
 table(owid.continents$location)
 ```
 
@@ -68,7 +74,6 @@ Data is filtered to include only country-specific COVID-19 outcomes and exclude 
 ```{r, eval = TRUE}
 owid.countries <- owid.filtered %>%
                     filter(!is.na(continent)) #Removed all rows with NA for continent, leaving behind only countries. 
-print(owid.countries)
 table(owid.countries$continent)
 ```
 
@@ -78,6 +83,10 @@ table(owid.filtered$totcases, useNA = "ifany") %>%
   tail() #No missing values for total cases column. 
 table(owid.filtered$totdeaths, useNA = "ifany") %>%
   tail() #Several missing values for total deaths column. Keep this in mind when analyzing. 
+table(owid.filtered$hosp.patients, useNA = "ifany") %>%
+  tail() #Most values are missing. Likely not useful for data analysis. 
+which(is.na(owid.filtered$totdeaths))
+#Missing countries: Butan, Cambodia, Dominica, Eritrea, Fiji, Grenada, Laos, Lesotho, Mongolia, Namibia, Saint Kitts and Nevis, Saint Lucia, Saint Vincent and the Grenadines, Seychelles, Timor, Uganda, Vatican, Vietnam.
 ```
 
 #### Modified Data Frames
@@ -94,43 +103,107 @@ select(owid.countries, c(iso.code:date, totdeaths, totdeaths.mil)) #COVID-19 dea
 select(owid.countries, c(iso.code:date, hosp.patients, hosp.patients.mil)) #COVID-19 hospitalizations by country.  
 ```
 
+## Case Count Plots
 ### Continent COVID-19 Plots
-Plots for exploratory analysis comparing COVID-19 cases by continent for both total cases and total cases per million people.
+Plots for exploratory analysis comparing COVID-19 cases by continent for total cases, total cases per million people, total deaths, and total deaths per million people.
 ```{r, eval = TRUE}
-owid.countries %>%
-    group_by(continent) %>%
-    summarise(totcases = mean(totcases.mil, na.rm = TRUE)) #Mean COVID-19 cases by continent.
-ggplot(data = owid.continents, aes(x = location, y = totcases)) +
-  geom_bar(stat="identity") +
-  labs(title = "Total COVID-19 Cases by Continent") +
-  labs(x = "Continent", y = "Total COVID-19 Cases") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total cases by continent. 
-ggplot(data = owid.continents, aes(x = location, y = totcases.mil)) +
-  geom_bar(stat="identity") + 
-  labs(title = "Total COVID-19 Cases per Million People by Continent") +
-  labs(x = "Continent", y = "Total COVID-19 Cases per Million") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total cases per million by continent. 
+continents1 <- owid.continents %>%
+                  filter(!(location %in% c("International", "World"))) %>%
+                  ggplot(aes(x = location, y = totcases)) +
+                  geom_bar(stat="identity") +
+                  geom_text(aes(label = totcases), vjust = -0.25, size = 3) + 
+                  labs(title = "Total COVID-19 Cases by Continent") +
+                  labs(x = "Continent", y = "Total COVID-19 Cases") +
+                  theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total cases by continent. 
+
+continents2 <- owid.continents %>%
+                  filter(!(location %in% c("International", "World"))) %>%
+                  ggplot(aes(x = location, y = totcases.mil)) +
+                  geom_bar(stat="identity") + 
+                  geom_text(aes(label = totcases), vjust = -0.25, size = 3) + 
+                  labs(title = "Total COVID-19 Cases per Million People by Continent") +
+                  labs(x = "Continent", y = "Total COVID-19 Cases per Million") +
+                  theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total cases per million by continent.
+
+plot_grid(continents1, continents2, labels = "AUTO")
+
+continents3 <- owid.continents %>%
+                    filter(!(location %in% c("International", "World"))) %>%
+                    ggplot(aes(x = location, y = totdeaths)) +
+                    geom_bar(stat="identity") +
+                    geom_text(aes(label = totcases), vjust = -0.25, size = 3) + 
+                    labs(title = "Total COVID-19 Deaths by Continent") +
+                    labs(x = "Continent", y = "Total COVID-19 Cases") +
+                    theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total deaths by continent. 
+
+continents4 <- owid.continents %>%
+                    filter(!(location %in% c("International", "World"))) %>%
+                    ggplot(aes(x = location, y = totdeaths.mil)) +
+                    geom_bar(stat="identity") +
+                    geom_text(aes(label = totcases), vjust = -0.25, size = 3) + 
+                    labs(title = "Total COVID-19 Death per Million by Continent") +
+                    labs(x = "Continent", y = "Total COVID-19 Cases") +
+                    theme(axis.text.x = element_text(angle = 45, hjust = 1)) #Barplot of total deaths per million by continent.
+
+plot_grid(continents3, continents4, labels = "AUTO")
 ```
 
 ### Top 10 Country COVID-19 Plots
 Barplots filtering out the 10 countries with the highest COVID-19 cases per million people on each continent, as well as a heatmap of all countries, are the outputs of the code below: 
 ```{r, eval = TRUE}
-top10countries <- function(x) { 
+ctry.mean.cases <- owid.countries %>%
+    group_by(continent) %>%
+    summarise(totcases.mil = mean(totcases.mil, na.rm = TRUE)) #Mean COVID-19 cases per country, grouped by continent.
+mean.cases <- function(x) {
+                      ctry.mean.cases %>%
+                      filter(continent == x) %>%
+                      select(totcases.mil) %>%
+                      as.numeric()
+} #Function to produce numeric value of mean COVID-19 cases per country by continent to be used in bar graphs below. 
+top.ctry.cases <- function(x) { 
                     owid.countries %>% 
                     filter(continent == x) %>%
                     arrange(desc(totcases.mil)) %>%
                     head(n=10) %>%
                     ggplot(aes(x = location, y = totcases.mil)) +
                         geom_bar(stat = "identity") +
+                        geom_abline(slope=0, intercept= mean.cases(x),  col = "red", lty=2) +
                         labs(x = "Country", y = "Total COVID-19 Cases per Million People") +
                         theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
                         labs(title = paste0("COVID-19 Cases per Million People in ", (continent = x)))
 }
 for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
-  print(top10countries(i))
+  print(top.ctry.cases(i))
 } #Loops function for continents of interest. 
-plot_grid() #Use this to combine the graphs from the for loop. Need to figure out how to name the graphs first? 
 
+ctry.mean.deaths <- owid.countries %>%
+    group_by(continent) %>%
+    summarise(totdeaths.mil = mean(totdeaths.mil, na.rm = TRUE)) #Mean COVID-19 daeths per country, grouped by continent.
+mean.deaths <- function(x) {
+                      ctry.mean.deaths %>%
+                      filter(continent == x) %>%
+                      select(totdeaths.mil) %>%
+                      as.numeric()
+} #Function to produce numeric value of mean COVID-19 deaths per country by continent to be used in bar graphs below. 
+top.ctry.deaths <- function(x) { 
+                    owid.countries %>% 
+                    filter(continent == x) %>%
+                    arrange(desc(totdeaths.mil)) %>%
+                    head(n=10) %>%
+                    ggplot(aes(x = location, y = totdeaths.mil)) +
+                        geom_bar(stat = "identity") +
+                        geom_abline(slope=0, intercept= mean.deaths(x),  col = "red", lty=2) +
+                        labs(x = "Country", y = "Total COVID-19 Deaths per Million People") +
+                        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+                        labs(title = paste0("COVID-19 Deaths per Million People in ", (continent = x)))
+}
+for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
+  print(top.ctry.deaths(i))
+} #Loops function for continents of interest. 
+```
+
+### Heatmaps of COVID-19 Cases Over Time, All Countries
+```{r, eval = TRUE, fig.width = 25, fig.height = 35}
 owid %>%
   rename(iso.code = iso_code, totcases.mil = total_cases_per_million) %>%
   select(c(iso.code:date, totcases.mil)) %>%
@@ -140,34 +213,45 @@ owid %>%
     scale_x_date(date_breaks = "1 month") +
     scale_fill_gradient(low = "#ffeda0", high = "#f03b20") +
     ggsave(file = "test.image.pdf", width = 20, height = 25) #Total cases per million over time by country as heatmap. 
+
+owid %>%
+  rename(iso.code = iso_code, new.cases = new_cases) %>%
+  select(c(iso.code:date, new.cases)) %>%
+  filter(!is.na(continent)) %>%
+  ggplot(aes(x = date, y = location, fill = new.cases)) +
+    geom_tile() +
+    scale_x_date(date_breaks = "1 month") +
+    scale_fill_gradient(low = "#ffeda0", high = "#f03b20", limits = c(0, 20000)) +
+    ggsave(file = "test.image2.pdf", width = 20, height = 25) #New cases per million over time by country as heatmap. Difficult to scale because range is so large.  
 ```
 
+## Population Size and COVID-19 Outcomes
 ### Population Size and COVID-19 Cases per Million
-Population size and population density are evaulated below as confounding variables for COVID-19 outcomes. These variables are first analyzed on a full-world scale, and then by continent. 
+Population size and population density are evaluated below as confounding variables for COVID-19 cases. These variables are first analyzed on a full-world scale, and then by continent. 
 ```{r, eval = TRUE}
 ggplot(data = owid.countries, aes(x = population, y = totcases.mil)) +
   geom_point(color = "#333aff") +
   geom_smooth(color = "red") +
-  geom_smooth(method = "lm", color = "green")
+  geom_smooth(method = "lm", color = "green") +
   theme_bw() +
   labs(x = "Population Size", y = "Total COVID-19 Cases per Million People") +
-  labs(title = ("World COVID-19 Cases per Million People in vs. Population Size")) #COVID-19 cases and population size on world scale. Red line is smooth fit; green line is linear fit. 
+  labs(title = ("World COVID-19 Cases per Million People vs. Population Size")) #COVID-19 cases and population size on world scale. Red line is smooth fit; green line is linear fit. 
 cor(owid.countries$totcases.mil, owid.countries$population, use = "complete.obs") 
-pop.lm.fit <- lm(totcases.mil ~ population, data = owid.countries)
-pop.lm.fit
-summary.lm(pop.lm.fit) #Summary statistics for linear fit. Not a significant relationship. 
+pop.lm.cases <- lm(totcases.mil ~ population, data = owid.countries)
+pop.lm.cases
+summary.lm(pop.lm.cases) #Summary statistics for linear fit. Not a significant relationship. 
 
 ggplot(data = owid.countries, aes(x = pop.density, y = totcases.mil)) +
   geom_point(color = "#333aff") +
   geom_smooth(color = "red") +
-  geom_smooth(method = "lm", color = "green")
+  geom_smooth(method = "lm", color = "green") +
   theme_bw() +
   labs(x = "Population Density", y = "Total COVID-19 Cases per Million People") +
-  labs(title = ("World COVID-19 Cases per Million People in vs. Population Density")) #COVID-19 cases and population size on world scale. Red line is smooth fit; green line is linear fit. 
+  labs(title = ("World COVID-19 Cases per Million People vs. Population Density")) #COVID-19 cases and population size on world scale. Red line is smooth fit; green line is linear fit. 
 cor(owid.countries$totcases.mil, owid.countries$pop.density, use = "complete.obs") 
-pop.den.lm.fit <- lm(totcases.mil ~ pop.density, data = owid.countries)
-pop.den.lm.fit
-summary.lm(pop.den.lm.fit) #Summary statistics for linear fit. Not a significant relationship. 
+pop.den.lm.cases <- lm(totcases.mil ~ pop.density, data = owid.countries)
+pop.den.lm.cases
+summary.lm(pop.den.lm.cases) #Summary statistics for linear fit. Not a significant relationship. 
 
 cases.pop <- function(x) { 
                     owid.countries %>% 
@@ -175,12 +259,20 @@ cases.pop <- function(x) {
                     ggplot(aes(x = population, y = totcases.mil)) +
                         geom_point(color = "#333aff") +
                         geom_smooth(color = "red") +
+                        geom_smooth(method = "lm", color = "green") +
                         theme_bw() +
                         labs(x = "Population Size", y = "Total COVID-19 Cases per Million People") +
                         labs(title = paste0("COVID-19 Cases per Million People in ", (continent = x), " vs. Population Size"))
 } 
+pop.lm.cases.cont <- function(x) {
+                        owid.countries %>%
+                        filter(continent == x) %>%
+                        lm(totcases.mil ~ population,.) %>%
+                        summary.lm() #Function for linear regression statistics to be included in for loop below. 
+}
 for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
-  print(cases.pop(i))
+   print(cases.pop(i)) 
+   print(pop.lm.cases.cont(i)) 
 } #Loops function for continents of interest. 
 
 cases.pop.den <- function(x) { 
@@ -194,25 +286,104 @@ cases.pop.den <- function(x) {
                         labs(x = "Population Density", y = "Total COVID-19 Cases per Million People") +
                         labs(title = paste0("COVID-19 Cases per Million People in ", (continent = x), " vs. Population Density"))
 } 
+pop.den.lm.cases.cont <- function(x) {
+                        owid.countries %>%
+                        filter(continent == x) %>%
+                        lm(totcases.mil ~ pop.density,.) %>%
+                        summary.lm() #Function for linear regression statistics to be included in for loop below. 
+}
 for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
   print(cases.pop.den(i))
+  print(pop.den.lm.cases.cont(i))
 } #Loops function for continents of interest. 
 ```
 
+### Population Size and COVID-19 Deaths per Million
+Population size and population density are evaluated below as confounding variables for COVID-19 deaths. These variables are first analyzed on a full-world scale, and then by continent. 
+```{r, eval = TRUE}
+ggplot(data = owid.countries, aes(x = population, y = totdeaths.mil)) +
+  geom_point(color = "#333aff") +
+  geom_smooth(color = "red") +
+  geom_smooth(method = "lm", color = "green") +
+  theme_bw() +
+  labs(x = "Population Size", y = "Total COVID-19 Deaths per Million People") +
+  labs(title = ("World COVID-19 Deaths per Million People in vs. Population Size")) #COVID-19 deaths and population size on world scale. Red line is smooth fit; green line is linear fit. 
+cor(owid.countries$totdeaths.mil, owid.countries$population, use = "complete.obs") 
+pop.lm.deaths <- lm(totdeaths.mil ~ population, data = owid.countries)
+pop.lm.deaths
+summary.lm(pop.lm.deaths) #Summary statistics for linear fit. Not a significant relationship. 
+
+ggplot(data = owid.countries, aes(x = pop.density, y = totdeaths.mil)) +
+  geom_point(color = "#333aff") +
+  geom_smooth(color = "red") +
+  geom_smooth(method = "lm", color = "green") +
+  theme_bw() +
+  labs(x = "Population Density", y = "Total COVID-19 Deaths per Million People") +
+  labs(title = ("World COVID-19 Deaths per Million People in vs. Population Density")) #COVID-19 deaths and population size on world scale. Red line is smooth fit; green line is linear fit. 
+cor(owid.countries$totdeaths.mil, owid.countries$pop.density, use = "complete.obs") 
+pop.den.lm.deaths <- lm(totdeaths.mil ~ pop.density, data = owid.countries)
+pop.den.lm.deaths
+summary.lm(pop.den.lm.deaths) #Summary statistics for linear fit. Not a significant relationship. 
+
+deaths.pop <- function(x) { 
+                    owid.countries %>% 
+                    filter(continent == x) %>%
+                    ggplot(aes(x = population, y = totdeaths.mil)) +
+                        geom_point(color = "#333aff") +
+                        geom_smooth(color = "red") +
+                        theme_bw() +
+                        labs(x = "Population Size", y = "Total COVID-19 Deaths per Million People") +
+                        labs(title = paste0("COVID-19 Cases per Million People in ", (continent = x), " vs. Population Size"))
+} 
+pop.lm.deaths.cont <- function(x) {
+                        owid.countries %>%
+                        filter(continent == x) %>%
+                        lm(totdeaths.mil ~ population,.) %>%
+                        summary.lm() #Function for linear regression statistics to be included in for loop below. 
+}
+for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
+  print(deaths.pop(i))
+  print(pop.lm.deaths.cont(i))
+} #Loops function for continents of interest. 
+
+deaths.pop.den <- function(x) { 
+                    owid.countries %>% 
+                    filter(continent == x) %>%
+                    ggplot(aes(x = pop.density, y = totdeaths.mil)) +
+                        geom_point(color = "#333aff") +
+                        geom_smooth(color = "red") +
+                        geom_smooth(method = "lm", color = "green") +
+                        theme_bw() +
+                        labs(x = "Population Density", y = "Total COVID-19 Deaths per Million People") +
+                        labs(title = paste0("COVID-19 Deaths per Million People in ", (continent = x), " vs. Population Density"))
+} 
+pop.den.lm.cases.cont <- function(x) {
+                        owid.countries %>%
+                        filter(continent == x) %>%
+                        lm(totdeaths.mil ~ pop.density,.) %>%
+                        summary.lm() #Function for linear regression statistics to be included in for loop below. 
+}
+for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
+  print(deaths.pop.den(i))
+  print(pop.den.lm.cases.cont(i))
+} #Loops function for continents of interest. 
+```
+
+## GDP and COVID-19 Outcomes
 ### GDP and COVID-19 Cases per Million
-Scatter plots with a smooth line showing the relationship of GDP per capita and COVID-19 cases per million people are the outputs of the function below: 
+First, a linear regression is performed on world COVID-19 cases and GDP. Then, scatter plots with a smooth line showing the relationship of GDP per capita and COVID-19 cases per million people are the outputs of the function below: 
 ```{r, eval = TRUE}
 ggplot(data = owid.countries, aes(x = gdp.cap, y = totcases.mil)) +
   geom_point(color = "#333aff") +
   geom_smooth(color = "red") +
-  geom_smooth(method = "lm", color = "green")
+  geom_smooth(method = "lm", color = "green") +
   theme_bw() +
   labs(x = "GDP per Capita", y = "Total COVID-19 Cases per Million People") +
   labs(title = paste0("World COVID-19 Cases per Million People in vs. GDP per Capita")) #COVID-19 cases and GDP per capita on world scale. Red line is smooth fit; green line is linear fit. 
 cor(owid.countries$totcases.mil, owid.countries$gdp.cap, use = "complete.obs") 
-gdp.lm.fit <- lm(totcases.mil ~ gdp.cap, data = owid.countries)
-gdp.lm.fit
-summary.lm(gdp.lm.fit) #Summary statistics for linear fit. 
+gdp.lm.cases <- lm(totcases.mil ~ gdp.cap, data = owid.countries)
+gdp.lm.cases
+summary.lm(gdp.lm.cases) #Summary statistics for linear fit. 
 
 cases.gdp <- function(x) { 
                     owid.countries %>% 
@@ -229,16 +400,55 @@ for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South Ameri
 } #Loops function for continents of interest. 
 ```
 
+### GDP and COVID-19 Deaths per Million
+First, a linear regression is performed on world COVID-19 deaths and GDP. Scatter plots with a smooth line showing the relationship of GDP per capita and COVID-19 deaths per million people are the outputs of the function below: 
+```{r, eval = TRUE}
+ggplot(data = owid.countries, aes(x = gdp.cap, y = totdeaths.mil)) +
+  geom_point(color = "#333aff") +
+  geom_smooth(color = "red") +
+  geom_smooth(method = "lm", color = "green") +
+  theme_bw() +
+  labs(x = "GDP per Capita", y = "Total COVID-19 Deaths per Million People") +
+  labs(title = paste0("World COVID-19 Deaths per Million People in vs. GDP per Capita")) #COVID-19 deaths and GDP per capita on world scale. Red line is smooth fit; green line is linear fit. 
+cor(owid.countries$totdeaths.mil, owid.countries$gdp.cap, use = "complete.obs") 
+gdp.lm.deaths <- lm(totdeaths.mil ~ gdp.cap, data = owid.countries)
+gdp.lm.deaths
+summary.lm(gdp.lm.deaths) #Summary statistics for linear fit. 
+
+deaths.gdp <- function(x) { 
+                    owid.countries %>% 
+                    filter(continent == x) %>%
+                    ggplot(aes(x = gdp.cap, y = totdeaths.mil)) +
+                        geom_point(color = "#333aff") +
+                        geom_smooth(color = "red") +
+                        theme_bw() +
+                        labs(x = "GDP per Capita", y = "Total COVID-19 Deaths per Million People") +
+                        labs(title = paste0("COVID-19 Deaths per Million People in ", (continent = x), " vs. GDP per Capita"))
+} 
+for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
+  print(deaths.gdp(i))
+} #Loops function for continents of interest. 
+```
+
+## Median Age and COVID-19 Outcomes
 ### Median Age and COVID-19 Cases per Million
-First, scatter plot shows all countries and the relationship between median age and COVID-19 outcomes. Next, median age is cut in two halves and convert to factors with labels "below.med" and "above.med". Bar plot shows COVID-19 cases per million for each country separated by continent, with fill color indicating whether the median population age is above or below the global median. 
+First, scatter plot shows all countries and the relationship between median age and COVID-19 outcomes. Next, median age is cut in two halves and converted to factors with labels "below.med" and "above.med". A bar plot shows COVID-19 cases per million for each country separated by continent, with fill color indicating whether the median population age is above or below the global median. 
 ```{r, eval = TRUE}
 ggplot(data = owid.countries, aes(x = med.age, y = totcases.mil)) +
   geom_point(color = "#333aff", alpha = 1) +
   geom_smooth(color = "red") +
+  geom_smooth(method = "lm", color = "green") +
   theme_bw() +
   labs(x = "Median Age", y = "Total COVID-19 Cases per Million People") +
   labs(title = "World COVID-19 Cases per Million People vs. Median Population Age") #COVID-19 cases vs. median age on world scale. 
 cor(owid.countries$totcases.mil, owid.countries$med.age, use = "complete.obs")
+age.lm.cases <- lm(totcases.mil ~ med.age, data = owid.countries)
+age.lm.cases
+summary.lm(age.lm.cases) #Summary statistics for linear fit. 
+
+exp.model.cases <- lm(log(totcases.mil) ~ med.age, data = owid.countries)
+exp.model.cases
+summary.lm(exp.model.cases)
 
 summarise(owid.countries, med.age = mean(med.age, na.rm = TRUE)) #Mean of the median age of all countries.
 cases.med.age <- function(x) { 
@@ -259,6 +469,45 @@ for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South Ameri
 } #Loops function for continents of interest.
 ```
 
+### Median Age and COVID-19 Deaths per Million
+First, scatter plot shows all countries and the relationship between median age and COVID-19 deaths. Next, median age is cut in two halves and converted to factors with labels "below.med" and "above.med". A bar plot shows COVID-19 daeths per million for each country separated by continent, with fill color indicating whether the median population age is above or below the global median. 
+```{r, eval = TRUE}
+ggplot(data = owid.countries, aes(x = med.age, y = totdeaths.mil)) +
+  geom_point(color = "#333aff", alpha = 1) +
+  geom_smooth(color = "red") +
+  geom_smooth(method = "lm", color = "green") +
+  theme_bw() +
+  labs(x = "Median Age", y = "Total COVID-19 Deaths per Million People") +
+  labs(title = "World COVID-19 Deaths per Million People vs. Median Population Age") #COVID-19 deaths vs. median age on world scale. 
+cor(owid.countries$totdeaths.mil, owid.countries$med.age, use = "complete.obs")
+age.lm.deaths <- lm(totdeaths.mil ~ med.age, data = owid.countries)
+age.lm.deaths
+summary.lm(age.lm.deaths) #Summary statistics for linear fit. 
+
+exp.model.deaths <- lm(log(totdeaths.mil) ~ med.age, data = owid.countries)
+exp.model.deaths
+summary.lm(exp.model.deaths)
+
+summarise(owid.countries, med.age = mean(med.age, na.rm = TRUE)) #Mean of the median age of all countries.
+deaths.med.age <- function(x) { 
+                    owid.countries %>%
+                    mutate(med.age = cut(med.age, breaks = c(0, 30.38, 48.3), labels = c("below.med", "above.med"))) %>%
+                    mutate(med.age <- as.factor(med.age)) %>%
+                    filter(continent == x) %>%
+                    ggplot(aes(x = location, y = totdeaths.mil, fill = factor(med.age))) +
+                        geom_bar(stat = "identity", position = "dodge") +
+                        theme_bw() +
+                        labs(x = "Country", y = "Total COVID-19 Deaths per Million People") +
+                        scale_fill_brewer(palette = "Set1") +
+                        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+                        labs(title = paste0("COVID-19 Deaths per Million People by Country in ", (continent = x), " and Median Age"))
+} 
+for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
+  print(deaths.med.age(i))
+} #Loops function for continents of interest.
+```
+
+## Smoking and COVID-19 Outcomes
 ### Smoking and COVID-19 Cases per Million 
 Graphs below show percentages of female and male smokers by country and the correlation to COVID-19 cases. 
 ```{r, eval = TRUE}
@@ -307,7 +556,56 @@ for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South Ameri
 }
 ```
 
+### Smoking and COVID-19 Deaths per Million 
+Graphs below show percentages of female and male smokers in the world and by country and the correlation to COVID-19 deaths. 
+```{r, eval = TRUE}
+ggplot(data = owid.countries, aes(x = fem.smokers, y = totdeaths.mil)) +
+  geom_point(color = "#333aff", alpha = 1) +
+  geom_smooth(color = "red") +
+  theme_bw() +
+  labs(x = "Percentage of Female Smokers by Country", y = "Total COVID-19 Deaths per Million People") +
+  labs(title = "World COVID-19 Deaths per Million People vs. Percentage of Female Smokers") #COVID-19 deaths vs. female smokers on world scale. 
+cor(owid.countries$totdeaths.mil, owid.countries$fem.smokers, use = "complete.obs") 
+
+ggplot(data = owid.countries, aes(x = male.smokers, y = totdeaths.mil)) +
+  geom_point(color = "#333aff", alpha = 1) +
+  geom_smooth(color = "red") +
+  theme_bw() +
+  labs(x = "Percentage of Male Smokers by Country", y = "Total COVID-19 Deaths per Million People") +
+  labs(title = "World COVID-19 Deaths per Million People vs. Percentage of Male Smokers") #COVID-19 deaths vs. male smokers on world scale. 
+cor(owid.countries$totdeaths.mil, owid.countries$male.smokers, use = "complete.obs") 
+
+deaths.smoking.f <- function(x) {
+                    owid.countries %>%
+                    filter(continent == x) %>%
+                    ggplot(aes(x = fem.smokers, y = totdeaths.mil)) +
+                      geom_point(color = "#333aff", alpha = 1) +
+                      geom_smooth(color = "red") +
+                      theme_bw() +
+                      labs(x = "Percentage of Female Smokers in Country", y = "Total COVID-19 Deaths per Million People") +
+                      labs(title = paste0("COVID-19 Deaths per Million People in ", (continent = x), " vs. Percentage of Female Smokers"))
+}
+for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
+  print(deaths.smoking.f(i)) #Apply function to each continent. 
+}
+
+deaths.smoking.m <- function(x) {
+                    owid.countries %>%
+                    filter(continent == x) %>%
+                    ggplot(aes(x = male.smokers, y = totdeaths.mil)) +
+                      geom_point(color = "#333aff", alpha = 1) +
+                      geom_smooth(color = "red") +
+                      theme_bw() +
+                      labs(x = "Percentage of Male Smokers in Country", y = "Total COVID-19 Deaths per Million People") +
+                      labs(title = paste0("COVID-19 Deaths per Million People in ", (continent = x), " vs. Percentage of Male Smokers"))
+}
+for (i in c("North America", "Europe", "Asia", "Africa", "Oceania", "South America")) {
+  print(deaths.smoking.m(i)) #Apply function to each continent. 
+}
+```
+
 ## Geospatial Analysis
+### Downloading World Map File 
 World map file is read in and prepared for overlaying with COVID-19 data.
 ```{r, eval = TRUE}
 library(sf)
@@ -322,21 +620,23 @@ plot(world.geo)
 plot(world.geo, col = "lemonchiffon2")
 plot(world.geo, lwd = 0.5, border = "red")
 ```
+
 ### Geospatial Distribution of COVID-19 Cases
 Joins OWID data set with world map data frame and then use country cases to shade countries accordingly.
-```{r, eval = TRUE}
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
 library(RColorBrewer)
 library(viridis)
 
 my_theme <- function() {
   theme_minimal() +                                  
-  theme(axis.line = element_blank(),               
+  theme(axis.line = element_blank(),
+  plot.title  = element_text(size=30),
   axis.text = element_blank(),                 
   axis.title = element_blank(),
   panel.grid = element_line(color = "white"),  
   legend.key.size = unit(0.8, "cm"),          
-  legend.text = element_text(size = 10),      
-  legend.title = element_text(size = 10))
+  legend.text = element_text(size = 20),      
+  legend.title = element_text(size = 20))
 }
 
 myPalette <- colorRampPalette(brewer.pal(9, "BuPu")) 
