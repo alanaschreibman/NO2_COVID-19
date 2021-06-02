@@ -210,6 +210,7 @@ owid %>%
   filter(!is.na(continent)) %>%
   ggplot(aes(x = date, y = location, fill = totcases.mil)) +
     geom_tile() +
+    labs(title = "Total COVID-19 Cases per Million Over Time", size = 22) +
     scale_x_date(date_breaks = "1 month") +
     scale_fill_gradient(low = "#ffeda0", high = "#f03b20") +
     ggsave(file = "test.image.pdf", width = 20, height = 25) #Total cases per million over time by country as heatmap. 
@@ -220,6 +221,7 @@ owid %>%
   filter(!is.na(continent)) %>%
   ggplot(aes(x = date, y = location, fill = new.cases)) +
     geom_tile() +
+    labs(title = "New COVID-19 Cases per Million Over Time", size = 22) +
     scale_x_date(date_breaks = "1 month") +
     scale_fill_gradient(low = "#ffeda0", high = "#f03b20", limits = c(0, 20000)) +
     ggsave(file = "test.image2.pdf", width = 20, height = 25) #New cases per million over time by country as heatmap. Difficult to scale because range is so large.  
@@ -391,6 +393,7 @@ cases.gdp <- function(x) {
                     ggplot(aes(x = gdp.cap, y = totcases.mil)) +
                         geom_point(color = "#333aff") +
                         geom_smooth(color = "red") +
+                        geom_smooth(method = "lm", color = "green") +
                         theme_bw() +
                         labs(x = "GDP per Capita", y = "Total COVID-19 Cases per Million People") +
                         labs(title = paste0("COVID-19 Cases per Million People in ", (continent = x), " vs. GDP per Capita"))
@@ -421,6 +424,7 @@ deaths.gdp <- function(x) {
                     ggplot(aes(x = gdp.cap, y = totdeaths.mil)) +
                         geom_point(color = "#333aff") +
                         geom_smooth(color = "red") +
+                        geom_smooth(method = "lm", color = "green") +
                         theme_bw() +
                         labs(x = "GDP per Capita", y = "Total COVID-19 Deaths per Million People") +
                         labs(title = paste0("COVID-19 Deaths per Million People in ", (continent = x), " vs. GDP per Capita"))
@@ -649,11 +653,108 @@ ggplot(data = world.sf, aes(fill = totcases.mil),
     lwd = 0.05) +
   geom_sf() +
   my_theme() +
-  labs(title = "World Distribution of COVID-19 Cases") +
+  labs(title = "Population-Adjusted Distribution of COVID-19 Cases") +
   scale_fill_gradientn(name = "COVID-19 \ncases (per million)",  
-                    limits = c(0, 6000), 
+                    limits = c(0, 6500), 
                     colours = myPalette(100)) #Plot of world distribution of COVID-19 cases with color shading. 
 ```
 
+### Geospatial Distribution of COVID-19 Deaths
+Uses merged data frame and shades deaths by country accordingly.
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
+ggplot(data = world.sf, aes(fill = totdeaths.mil),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Population-Adjusted Distribution of COVID-19 Deaths") +
+  scale_fill_gradientn(name = "COVID-19 \ndeaths (per million)",  
+                    limits = c(0, 700), 
+                    colours = myPalette(100)) #Plot of world distribution of COVID-19 deaths with color shading. 
+```
 
+### Geospatial Distribution of GDP per Capita
+Uses merged data frame and shades GDP per capita by country accordingly.
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
+ggplot(data = world.sf, aes(fill = gdp.cap),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Global Distribution of GDP per Capita") +
+  scale_fill_gradientn(name = "GDP \nper capita",  
+                    limits = c(0, 60000), 
+                    colours = myPalette(100)) 
+```
 
+### Geospatial Distribution of Population Density
+Uses merged data frame and shades population density by country accordingly.
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
+ggplot(data = world.sf, aes(fill = pop.density),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Global Distribution of Population Density") +
+  scale_fill_gradientn(name = "Population \ndensity",  
+                    limits = c(0, 450), 
+                    colours = myPalette(100)) #Plot of world distribution of COVID-19 deaths with color shading. 
+```
+
+### Geospatial Distribution of Median Age
+Uses merged data frame and shades median age by country accordingly.
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
+ggplot(data = world.sf, aes(fill = med.age),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Global Distribution of Median Age") +
+  scale_fill_gradientn(name = "Median \n age",  
+                    limits = c(0, 50), 
+                    colours = myPalette(100)) 
+```
+
+### Geospatial Distribution of Smoking
+Uses merged data frame and shades male and female smoking percentages by country accordingly.
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
+ggplot(data = world.sf, aes(fill = fem.smokers),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Percentage of Female Smokers by Country") +
+  scale_fill_gradientn(name = "Female \nsmokers (%)",  
+                    limits = c(0, 40), 
+                    colours = myPalette(100)) 
+
+ggplot(data = world.sf, aes(fill = male.smokers),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Percentage of Male Smokers by Country") +
+  scale_fill_gradientn(name = "Male \nsmokers (%)",  
+                    limits = c(0, 80), 
+                    colours = myPalette(100)) 
+```
+
+### Geospatial Distribution of Diabetes
+Uses merged data frame and shades diabetes prevalence by country accordingly.
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
+ggplot(data = world.sf, aes(fill = diab.prev),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Diabetes Prevalence by Country") +
+  scale_fill_gradientn(name = "Diabetes \nprevalence (%)",  
+                    limits = c(0, 20), 
+                    colours = myPalette(100)) 
+```
+
+### Geospatial Distribution of Cardiovascular Death
+Uses merged data frame and shades indicence of cardiovascular death by country accordingly.
+```{r, eval = TRUE, fig.width = 35, fig.height = 25}
+ggplot(data = world.sf, aes(fill = card.death),
+    lwd = 0.05) +
+  geom_sf() +
+  my_theme() +
+  labs(title = "Incidence of Cardiovascular Death by Country") +
+  scale_fill_gradientn(name = "Diabetes \nprevalence (%)",  
+                    limits = c(0, 800), 
+                    colours = myPalette(100)) 
+```
